@@ -1,53 +1,50 @@
-/**
- * Below are the colors that are used in the app. The colors are defined in the light and dark mode.
- * There are many other ways to style your app. For example, [Nativewind](https://www.nativewind.dev/), [Tamagui](https://tamagui.dev/), [unistyles](https://reactnativeunistyles.vercel.app), etc.
- */
-
-import '@/global.css';
-
 import { Platform } from 'react-native';
 
 export const Colors = {
+  brand: {
+    orange: '#FF9F43',
+    orangeHover: '#f08d2f',
+    slate: '#1E3A44',
+    slateDark: '#152b33',
+    bg: '#F4F6F6',
+    cream: '#FFF2E5',
+    muted: '#8C9A9E',
+    card: '#FFFFFF',
+    emerald: '#10B981',
+    emeraldBg: '#ECFDF5',
+    rose: '#F43F5E',
+    roseBg: '#FFF1F2',
+  },
   light: {
-    text: '#000000',
-    background: '#ffffff',
-    backgroundElement: '#F0F0F3',
-    backgroundSelected: '#E0E1E6',
-    textSecondary: '#60646C',
+    text: '#1E3A44',
+    background: '#F4F6F6',
+    backgroundElement: '#E2E8F0',
+    backgroundSelected: '#CBD5E1',
+    tint: '#FF9F43',
+    card: '#FFFFFF',
+    textSecondary: '#8C9A9E',
   },
   dark: {
-    text: '#ffffff',
-    background: '#000000',
-    backgroundElement: '#212225',
-    backgroundSelected: '#2E3135',
-    textSecondary: '#B0B4BA',
+    text: '#FFFFFF',
+    background: '#1E3A44',
+    backgroundElement: '#152b33',
+    backgroundSelected: '#0F172A',
+    tint: '#FF9F43',
+    card: '#152b33',
+    textSecondary: '#8C9A9E',
   },
 } as const;
 
 export type ThemeColor = keyof typeof Colors.light & keyof typeof Colors.dark;
 
 export const Fonts = Platform.select({
-  ios: {
-    /** iOS `UIFontDescriptorSystemDesignDefault` */
-    sans: 'system-ui',
-    /** iOS `UIFontDescriptorSystemDesignSerif` */
-    serif: 'ui-serif',
-    /** iOS `UIFontDescriptorSystemDesignRounded` */
-    rounded: 'ui-rounded',
-    /** iOS `UIFontDescriptorSystemDesignMonospaced` */
-    mono: 'ui-monospace',
+  web: {
+    sans: 'Plus Jakarta Sans, sans-serif',
+    mono: 'monospace',
   },
   default: {
     sans: 'normal',
-    serif: 'serif',
-    rounded: 'normal',
     mono: 'monospace',
-  },
-  web: {
-    sans: 'var(--font-display)',
-    serif: 'var(--font-serif)',
-    rounded: 'var(--font-rounded)',
-    mono: 'var(--font-mono)',
   },
 });
 
