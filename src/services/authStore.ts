@@ -15,6 +15,7 @@ export interface UserProfile {
   office_latitude: number;
   office_longitude: number;
   geofence_radius: number;
+  is_geofence_required?: number;
   biometric_enabled: number;
   is_active: number;
 }

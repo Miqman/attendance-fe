@@ -6,6 +6,7 @@ import { FontAwesome6 } from '@expo/vector-icons';
 import { BottomNavigation } from '@/components/BottomNavigation';
 import { CameraModal } from '@/components/CameraModal';
 import { Toast } from '@/components/Toast';
+import * as Location from 'expo-location';
 import { api } from '@/services/api';
 import { useAuthStore } from '@/services/authStore';
 
@@ -37,6 +38,8 @@ export default function DashboardScreen() {
 
   // Dynamic State
   const [isInsideGeofence, setIsInsideGeofence] = useState(true);
+  const [locationPermissionGranted, setLocationPermissionGranted] = useState<boolean | null>(null);
+  const [currentCoords, setCurrentCoords] = useState<{ latitude: number; longitude: number } | null>(null);
   const [clockState, setClockState] = useState<'Clock In' | 'Clock Out'>('Clock In');
   const [workHours, setWorkHours] = useState(0);
   const [workHoursPercent, setWorkHoursPercent] = useState(0);
@@ -46,6 +49,32 @@ export default function DashboardScreen() {
   const [timeString, setTimeString] = useState('08:28:14');
   const [ampm, setAmpm] = useState('AM');
   const [loadingAtt, setLoadingAtt] = useState(false);
+
+  // Request GPS Location Permissions & Real Position
+  const requestLocation = async () => {
+    try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        setLocationPermissionGranted(false);
+        setToastMsg('Izin Lokasi Ditolak: Akses GPS diperlukan untuk melakukan presensi.');
+        return false;
+      }
+      setLocationPermissionGranted(true);
+      const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+      if (loc?.coords) {
+        setCurrentCoords({ latitude: loc.coords.latitude, longitude: loc.coords.longitude });
+      }
+      return true;
+    } catch (err) {
+      console.log('Location permission error:', err);
+      setLocationPermissionGranted(false);
+      return false;
+    }
+  };
+
+  useEffect(() => {
+    requestLocation();
+  }, []);
 
   // Helper to calculate dynamic work hours from API attendance records
   const updateAttendanceState = (attendances: any[]) => {
@@ -125,8 +154,18 @@ export default function DashboardScreen() {
     }
   };
 
-  // Clock In/Out action button press
-  const handleClockAction = () => {
+  const isGeofenceRequired = Number(user?.is_geofence_required || 0) === 1;
+
+  // Clock In/Out action button press (Re-requests location if not granted)
+  const handleClockAction = async () => {
+    if (!locationPermissionGranted) {
+      const hasPermission = await requestLocation();
+      if (!hasPermission) return;
+    }
+    if (isGeofenceRequired && !isInsideGeofence) {
+      setToastMsg('Peringatan: Perusahaan mewajibkan absensi di dalam radius kantor!');
+      return;
+    }
     setCameraVisible(true);
   };
 
@@ -134,8 +173,8 @@ export default function DashboardScreen() {
   const handleTakeSelfie = async (photoBase64: string) => {
     setCameraVisible(false);
     const type = clockState === 'Clock In' ? 'in' : 'out';
-    const latitude = isInsideGeofence ? -6.20881 : -6.5000;
-    const longitude = isInsideGeofence ? 106.84562 : 106.8000;
+    const latitude = currentCoords?.latitude ?? (isInsideGeofence ? -6.20881 : -6.5000);
+    const longitude = currentCoords?.longitude ?? (isInsideGeofence ? 106.84562 : 106.8000);
 
     setLoadingAtt(true);
     const res = await api.submitAttendance({
@@ -164,28 +203,30 @@ export default function DashboardScreen() {
     <SafeAreaView style={styles.safeArea}>
       <Toast message={toastMsg} onHide={() => setToastMsg(null)} />
 
-      {/* Top Geofence Simulator Bar */}
-      <View style={styles.simulatorBar}>
-        <FontAwesome6 name="location-crosshairs" size={12} color="#8C9A9E" />
-        <Text style={styles.simLabel}>Simulasi GPS:</Text>
-        <TouchableOpacity
-          onPress={() => handleToggleGeofence(true)}
-          style={[styles.simBtn, isInsideGeofence ? styles.simBtnActiveSuccess : styles.simBtnInactive]}
-        >
-          <Text style={[styles.simBtnText, isInsideGeofence && { color: '#34D399' }]}>
-            ✓ Radius (12m)
-          </Text>
-        </TouchableOpacity>
+      {/* Top Geofence Simulator Bar (Development Only) */}
+      {__DEV__ && (
+        <View style={styles.simulatorBar}>
+          <FontAwesome6 name="location-crosshairs" size={12} color="#8C9A9E" />
+          <Text style={styles.simLabel}>Simulasi GPS:</Text>
+          <TouchableOpacity
+            onPress={() => handleToggleGeofence(true)}
+            style={[styles.simBtn, isInsideGeofence ? styles.simBtnActiveSuccess : styles.simBtnInactive]}
+          >
+            <Text style={[styles.simBtnText, isInsideGeofence && { color: '#34D399' }]}>
+              ✓ Radius (12m)
+            </Text>
+          </TouchableOpacity>
 
-        <TouchableOpacity
-          onPress={() => handleToggleGeofence(false)}
-          style={[styles.simBtn, !isInsideGeofence ? styles.simBtnActiveError : styles.simBtnInactive]}
-        >
-          <Text style={[styles.simBtnText, !isInsideGeofence && { color: '#FB7185' }]}>
-            ✕ Luar (120m)
-          </Text>
-        </TouchableOpacity>
-      </View>
+          <TouchableOpacity
+            onPress={() => handleToggleGeofence(false)}
+            style={[styles.simBtn, !isInsideGeofence ? styles.simBtnActiveError : styles.simBtnInactive]}
+          >
+            <Text style={[styles.simBtnText, !isInsideGeofence && { color: '#FB7185' }]}>
+              ✕ Luar (120m)
+            </Text>
+          </TouchableOpacity>
+        </View>
+      )}
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         {/* Header Profile Bar */}
@@ -216,10 +257,14 @@ export default function DashboardScreen() {
         {/* Hero Card: Clock In Status & Digital Timer */}
         <View style={styles.heroCard}>
           <View style={styles.heroTopRow}>
-            <View style={[styles.badgePill, isInsideGeofence ? styles.badgePillSuccess : styles.badgePillError]}>
-              <View style={[styles.pulseDot, { backgroundColor: isInsideGeofence ? '#34D399' : '#FB7185' }]} />
+            <View style={[styles.badgePill, (!isGeofenceRequired || isInsideGeofence) ? styles.badgePillSuccess : styles.badgePillError]}>
+              <View style={[styles.pulseDot, { backgroundColor: (!isGeofenceRequired || isInsideGeofence) ? '#34D399' : '#FB7185' }]} />
               <Text style={styles.badgeText}>
-                {isInsideGeofence ? 'Dalam Radius (12m)' : 'Luar Radius (120m)'}
+                {!isGeofenceRequired
+                  ? 'Absensi Fleksibel (WFH/Remote)'
+                  : isInsideGeofence
+                  ? 'Dalam Radius (12m)'
+                  : 'Luar Radius (120m)'}
               </Text>
             </View>
             <Text style={styles.shiftText}>{getShiftText()}</Text>
@@ -375,7 +420,8 @@ export default function DashboardScreen() {
       {/* Native Camera Modal */}
       <CameraModal
         visible={cameraVisible}
-        isInsideGeofence={isInsideGeofence}
+        actionTitle={clockState}
+        isInsideGeofence={!isGeofenceRequired || isInsideGeofence}
         onClose={() => setCameraVisible(false)}
         onTakeSelfie={handleTakeSelfie}
       />
@@ -762,5 +808,23 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: '800',
     color: '#059669',
+  },
+  locationWarningBanner: {
+    backgroundColor: '#FFE4E6',
+    marginHorizontal: 16,
+    marginTop: 8,
+    padding: 12,
+    borderRadius: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    borderWidth: 1,
+    borderColor: '#FECDD3',
+  },
+  locationWarningText: {
+    flex: 1,
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#E11D48',
   },
 });

@@ -8,6 +8,7 @@ interface CameraModalProps {
   onClose: () => void;
   onTakeSelfie: (photoBase64: string) => void;
   isInsideGeofence?: boolean;
+  actionTitle?: string;
 }
 
 export const CameraModal: React.FC<CameraModalProps> = ({
@@ -15,6 +16,7 @@ export const CameraModal: React.FC<CameraModalProps> = ({
   onClose,
   onTakeSelfie,
   isInsideGeofence = true,
+  actionTitle = 'Clock In',
 }) => {
   const [permission, requestPermission] = useCameraPermissions();
   const [capturedPhoto, setCapturedPhoto] = useState<string | null>(null);
@@ -157,7 +159,7 @@ export const CameraModal: React.FC<CameraModalProps> = ({
             /* Camera Shutter Panel */
             <>
               <Text style={styles.controlTitle}>
-                Verifikasi Foto Selfie untuk <Text style={styles.highlightText}>Clock In</Text>
+                Verifikasi Foto Selfie untuk <Text style={styles.highlightText}>{actionTitle}</Text>
               </Text>
 
               <View style={styles.shutterRow}>

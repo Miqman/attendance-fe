@@ -116,7 +116,7 @@ export const api = {
   // Profile
   getProfile: () => request('/api/profile'),
 
-  updateProfile: (data: { biometric_enabled?: number | boolean }) =>
+  updateProfile: (data: { biometric_enabled?: number | boolean; is_geofence_required?: number | boolean }) =>
     request('/api/profile', {
       method: 'PATCH',
       body: JSON.stringify(data),

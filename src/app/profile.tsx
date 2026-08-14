@@ -18,6 +18,7 @@ export default function ProfileScreen() {
 
   // State
   const [biometricEnabled, setBiometricEnabled] = useState(user ? Boolean(user.biometric_enabled) : true);
+  const [geofenceRequired, setGeofenceRequired] = useState(user ? Boolean(user.is_geofence_required) : false);
   const [cameraVisible, setCameraVisible] = useState(false);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
 
@@ -27,9 +28,23 @@ export default function ProfileScreen() {
       if (res.profile) {
         setUser(res.profile);
         setBiometricEnabled(Boolean(res.profile.biometric_enabled));
+        setGeofenceRequired(Boolean(res.profile.is_geofence_required));
       }
     })();
   }, []);
+
+  const handleToggleGeofenceRequired = async (val: boolean) => {
+    setGeofenceRequired(val);
+    const res = await api.updateProfile({ is_geofence_required: val ? 1 : 0 });
+    if (res.profile) {
+      setUser(res.profile);
+    }
+    setToastMsg(
+      val
+        ? 'Wajib Geofence diaktifkan (Absensi harus di Radius Kantor)'
+        : 'Absensi Fleksibel diaktifkan (Karyawan bisa WFH/Remote dari mana saja)'
+    );
+  };
 
   const handleToggleBiometric = async (val: boolean) => {
     if (val) {
@@ -154,6 +169,33 @@ export default function ProfileScreen() {
             <FontAwesome6 name="chevron-right" size={14} color="#8C9A9E" />
           </TouchableOpacity>
         </View>
+
+        {/* HR Special Settings Card (Visible Only to HR Role) */}
+        {user?.role === 'hr' && (
+          <View style={styles.infoCard}>
+            <View style={styles.cardHeaderRow}>
+              <FontAwesome6 name="user-shield" size={16} color="#34D399" />
+              <Text style={styles.cardTitle}>Pengaturan Kebijakan HR (Khusus HR)</Text>
+            </View>
+
+            <View style={styles.settingRow}>
+              <View style={styles.settingTextGroup}>
+                <Text style={styles.settingTitle}>Wajibkan Radius Geofence</Text>
+                <Text style={styles.settingSub}>
+                  {geofenceRequired
+                    ? 'Wajib absen di Radius Kantor (50m)'
+                    : 'Absensi Bebas (WFH / Remote / Cafe diizinkan)'}
+                </Text>
+              </View>
+              <Switch
+                value={geofenceRequired}
+                onValueChange={handleToggleGeofenceRequired}
+                trackColor={{ false: '#CBD5E1', true: '#34D399' }}
+                thumbColor={geofenceRequired ? '#1E3A44' : '#F8FAFC'}
+              />
+            </View>
+          </View>
+        )}
 
         {/* Logout Button */}
         <TouchableOpacity onPress={handleLogout} style={styles.logoutBtn}>
