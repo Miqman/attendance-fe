@@ -8,6 +8,7 @@ interface CameraModalProps {
   onClose: () => void;
   onTakeSelfie: (photoBase64: string) => void;
   isInsideGeofence?: boolean;
+  isGeofenceRequired?: boolean;
   actionTitle?: string;
 }
 
@@ -16,6 +17,7 @@ export const CameraModal: React.FC<CameraModalProps> = ({
   onClose,
   onTakeSelfie,
   isInsideGeofence = true,
+  isGeofenceRequired = false,
   actionTitle = 'Clock In',
 }) => {
   const [permission, requestPermission] = useCameraPermissions();
@@ -36,7 +38,8 @@ export const CameraModal: React.FC<CameraModalProps> = ({
   }, [visible]);
 
   const handleShutter = async () => {
-    if (!isInsideGeofence) return;
+    // Only block if company explicitly requires geofence AND user is outside
+    if (isGeofenceRequired && !isInsideGeofence) return;
 
     if (cameraRef.current) {
       setCapturing(true);
@@ -97,16 +100,25 @@ export const CameraModal: React.FC<CameraModalProps> = ({
             <FontAwesome6 name="xmark" size={16} color="#FFFFFF" />
           </TouchableOpacity>
 
-          <View style={[styles.badge, isInsideGeofence ? styles.badgeSuccess : styles.badgeError]}>
-            <FontAwesome6
-              name={isInsideGeofence ? 'circle-check' : 'circle-xmark'}
-              size={12}
-              color={isInsideGeofence ? '#34D399' : '#FB7185'}
-            />
-            <Text style={[styles.badgeText, isInsideGeofence ? styles.badgeTextSuccess : styles.badgeTextError]}>
-              {isInsideGeofence ? 'Di Dalam Radius (12m)' : 'Di Luar Geofence (120m)'}
-            </Text>
-          </View>
+          {isGeofenceRequired ? (
+            <View style={[styles.badge, isInsideGeofence ? styles.badgeSuccess : styles.badgeError]}>
+              <FontAwesome6
+                name={isInsideGeofence ? 'circle-check' : 'circle-xmark'}
+                size={12}
+                color={isInsideGeofence ? '#34D399' : '#FB7185'}
+              />
+              <Text style={[styles.badgeText, isInsideGeofence ? styles.badgeTextSuccess : styles.badgeTextError]}>
+                {isInsideGeofence ? 'Di Dalam Radius (12m)' : 'Di Luar Geofence (120m)'}
+              </Text>
+            </View>
+          ) : (
+            <View style={[styles.badge, styles.badgeWfa]}>
+              <FontAwesome6 name="location-dot" size={12} color="#38BDF8" />
+              <Text style={[styles.badgeText, { color: '#38BDF8' }]}>
+                Absensi Fleksibel (WFA / Remote)
+              </Text>
+            </View>
+          )}
 
           <TouchableOpacity onPress={toggleCameraFacing} style={styles.iconBtn}>
             <FontAwesome6 name="arrows-rotate" size={14} color="#FFFFFF" />
@@ -234,6 +246,10 @@ const styles = StyleSheet.create({
   badgeError: {
     backgroundColor: 'rgba(244, 63, 94, 0.2)',
     borderColor: 'rgba(244, 63, 94, 0.4)',
+  },
+  badgeWfa: {
+    backgroundColor: 'rgba(56, 189, 248, 0.15)',
+    borderColor: 'rgba(56, 189, 248, 0.35)',
   },
   badgeText: {
     fontSize: 12,

@@ -12,7 +12,7 @@ export const BottomNavigation: React.FC<BottomNavigationProps> = ({ onOpenCamera
   const pathname = usePathname();
 
   const isHome = pathname === '/' || pathname === '/index';
-  const isHistory = pathname === '/history';
+  const isEmployees = pathname === '/employees' || pathname === '/history';
   const isReport = pathname === '/report';
   const isProfile = pathname === '/profile';
 
@@ -25,10 +25,10 @@ export const BottomNavigation: React.FC<BottomNavigationProps> = ({ onOpenCamera
           <Text style={[styles.navText, isHome && styles.activeText]}>Beranda</Text>
         </TouchableOpacity>
 
-        {/* Riwayat */}
-        <TouchableOpacity onPress={() => router.push('/history')} style={styles.navItem}>
-          <FontAwesome6 name="calendar-days" size={16} color={isHistory ? '#FF9F43' : '#8C9A9E'} />
-          <Text style={[styles.navText, isHistory && styles.activeText]}>Riwayat</Text>
+        {/* Karyawan (Direktori & Status Cuti) */}
+        <TouchableOpacity onPress={() => router.push('/employees')} style={styles.navItem}>
+          <FontAwesome6 name="users" size={16} color={isEmployees ? '#FF9F43' : '#8C9A9E'} />
+          <Text style={[styles.navText, isEmployees && styles.activeText]}>Karyawan</Text>
         </TouchableOpacity>
 
         {/* Center Prominent FAB Button */}

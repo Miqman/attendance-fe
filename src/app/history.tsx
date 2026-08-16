@@ -149,23 +149,6 @@ export default function HistoryScreen() {
             );
           })}
         </ScrollView>
-
-        {/* Action Request Pill Button */}
-        <TouchableOpacity
-          onPress={async () => {
-            const res = await api.submitRequest({
-              type: 'cuti',
-              start_date: '2026-08-25',
-              end_date: '2026-08-26',
-              reason: 'Pengajuan cuti tahunan via Mobile App',
-            });
-            setToastMsg(res.message || res.error || 'Pengajuan Cuti terkirim');
-          }}
-          style={styles.requestPillBtn}
-        >
-          <FontAwesome6 name="file-pen" size={13} color="#1E3A44" />
-          <Text style={styles.requestPillText}>Pengajuan Cuti / Izin Overtime</Text>
-        </TouchableOpacity>
       </View>
 
       {/* Scrollable Timeline & Activity Content */}

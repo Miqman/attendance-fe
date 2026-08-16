@@ -49,8 +49,9 @@ export default function DashboardScreen() {
   const [timeString, setTimeString] = useState('08:28:14');
   const [ampm, setAmpm] = useState('AM');
   const [loadingAtt, setLoadingAtt] = useState(false);
+  const [isMockLocation, setIsMockLocation] = useState<boolean>(false);
 
-  // Request GPS Location Permissions & Real Position
+  // Request GPS Location Permissions & Real Position with Anti-Mock GPS detection
   const requestLocation = async () => {
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
@@ -61,6 +62,16 @@ export default function DashboardScreen() {
       }
       setLocationPermissionGranted(true);
       const loc = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+      
+      // Anti-Mock GPS Detection
+      if ((loc as any)?.mocked) {
+        setIsMockLocation(true);
+        setToastMsg('Peringatan Anti-Fraud: Fake GPS / Mock Location terdeteksi pada perangkat!');
+        return false;
+      } else {
+        setIsMockLocation(false);
+      }
+
       if (loc?.coords) {
         setCurrentCoords({ latitude: loc.coords.latitude, longitude: loc.coords.longitude });
       }
@@ -144,20 +155,14 @@ export default function DashboardScreen() {
     return () => clearInterval(interval);
   }, []);
 
-  // Geofence toggle simulation
-  const handleToggleGeofence = (inside: boolean) => {
-    setIsInsideGeofence(inside);
-    if (inside) {
-      setToastMsg('GPS Terverifikasi: Anda di dalam radius kantor (12m).');
-    } else {
-      setToastMsg('Peringatan: Anda berada di luar radius geofence kantor (120m)!');
-    }
-  };
-
   const isGeofenceRequired = Number(user?.is_geofence_required || 0) === 1;
 
   // Clock In/Out action button press (Re-requests location if not granted)
   const handleClockAction = async () => {
+    if (isMockLocation) {
+      setToastMsg('Peringatan Anti-Fraud: Nonaktifkan Mock Location / Fake GPS terlebih dahulu!');
+      return;
+    }
     if (!locationPermissionGranted) {
       const hasPermission = await requestLocation();
       if (!hasPermission) return;
@@ -172,9 +177,14 @@ export default function DashboardScreen() {
   // Selfie captured & submitted from native camera
   const handleTakeSelfie = async (photoBase64: string) => {
     setCameraVisible(false);
+    if (isMockLocation) {
+      setToastMsg('Absensi Ditolak: Terdeteksi Fake GPS / Mock Location aktif.');
+      return;
+    }
+
     const type = clockState === 'Clock In' ? 'in' : 'out';
-    const latitude = currentCoords?.latitude ?? (isInsideGeofence ? -6.20881 : -6.5000);
-    const longitude = currentCoords?.longitude ?? (isInsideGeofence ? 106.84562 : 106.8000);
+    const latitude = currentCoords?.latitude ?? -6.20881;
+    const longitude = currentCoords?.longitude ?? 106.84562;
 
     setLoadingAtt(true);
     const res = await api.submitAttendance({
@@ -182,6 +192,7 @@ export default function DashboardScreen() {
       latitude,
       longitude,
       photo_base64: photoBase64,
+      is_mocked: isMockLocation,
     });
     setLoadingAtt(false);
 
@@ -202,31 +213,6 @@ export default function DashboardScreen() {
   return (
     <SafeAreaView style={styles.safeArea}>
       <Toast message={toastMsg} onHide={() => setToastMsg(null)} />
-
-      {/* Top Geofence Simulator Bar (Development Only) */}
-      {__DEV__ && (
-        <View style={styles.simulatorBar}>
-          <FontAwesome6 name="location-crosshairs" size={12} color="#8C9A9E" />
-          <Text style={styles.simLabel}>Simulasi GPS:</Text>
-          <TouchableOpacity
-            onPress={() => handleToggleGeofence(true)}
-            style={[styles.simBtn, isInsideGeofence ? styles.simBtnActiveSuccess : styles.simBtnInactive]}
-          >
-            <Text style={[styles.simBtnText, isInsideGeofence && { color: '#34D399' }]}>
-              ✓ Radius (12m)
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            onPress={() => handleToggleGeofence(false)}
-            style={[styles.simBtn, !isInsideGeofence ? styles.simBtnActiveError : styles.simBtnInactive]}
-          >
-            <Text style={[styles.simBtnText, !isInsideGeofence && { color: '#FB7185' }]}>
-              ✕ Luar (120m)
-            </Text>
-          </TouchableOpacity>
-        </View>
-      )}
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         {/* Header Profile Bar */}
@@ -301,7 +287,7 @@ export default function DashboardScreen() {
             <TouchableOpacity
               onPress={handleClockAction}
               disabled={loadingAtt}
-              style={[styles.clockActionBtn, !isInsideGeofence && { opacity: 0.6 }]}
+              style={[styles.clockActionBtn, (isGeofenceRequired && !isInsideGeofence) && { opacity: 0.6 }]}
             >
               {loadingAtt ? (
                 <ActivityIndicator color="#1E3A44" size="small" />
@@ -317,6 +303,23 @@ export default function DashboardScreen() {
               )}
             </TouchableOpacity>
           </View>
+        </View>
+
+        {/* Quick Service Action Banner */}
+        <View style={styles.quickServicesRow}>
+          <TouchableOpacity
+            onPress={() => router.push('/requests')}
+            style={styles.quickServiceCardOrange}
+          >
+            <View style={styles.quickServiceIconBoxOrange}>
+              <FontAwesome6 name="calendar-plus" size={16} color="#FF9F43" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.quickServiceTitle}>Pengajuan & Izin</Text>
+              <Text style={styles.quickServiceSub}>Cuti, Sakit, Lembur & Approval</Text>
+            </View>
+            <FontAwesome6 name="chevron-right" size={12} color="#FF9F43" />
+          </TouchableOpacity>
         </View>
 
         {/* Section: Today's Schedule (Bento Grid) */}
@@ -421,7 +424,8 @@ export default function DashboardScreen() {
       <CameraModal
         visible={cameraVisible}
         actionTitle={clockState}
-        isInsideGeofence={!isGeofenceRequired || isInsideGeofence}
+        isInsideGeofence={isInsideGeofence}
+        isGeofenceRequired={isGeofenceRequired}
         onClose={() => setCameraVisible(false)}
         onTakeSelfie={handleTakeSelfie}
       />
@@ -826,5 +830,41 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '700',
     color: '#E11D48',
+  },
+  quickServicesRow: {
+    marginBottom: 20,
+  },
+  quickServiceCardOrange: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 159, 67, 0.25)',
+    shadowColor: '#1E3A44',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  quickServiceIconBoxOrange: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255, 159, 67, 0.12)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  quickServiceTitle: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#1E3A44',
+  },
+  quickServiceSub: {
+    fontSize: 11,
+    color: '#64748B',
+    marginTop: 1,
   },
 });

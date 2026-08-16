@@ -34,7 +34,9 @@ export default function RootLayout() {
       <AnimatedSplashOverlay />
       <Stack screenOptions={{ headerShown: false, animation: 'fade' }}>
         <Stack.Screen name="index" />
+        <Stack.Screen name="employees" />
         <Stack.Screen name="history" />
+        <Stack.Screen name="requests" />
         <Stack.Screen name="report" />
         <Stack.Screen name="profile" />
         <Stack.Screen name="attendance/[id]" />

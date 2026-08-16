@@ -128,6 +128,7 @@ export const api = {
     latitude: number;
     longitude: number;
     photo_base64: string;
+    is_mocked?: boolean;
   }) =>
     request('/api/attendance', {
       method: 'POST',
@@ -140,15 +141,39 @@ export const api = {
 
   getAttendanceReport: () => request('/api/attendance/report'),
 
-  // Requests
+  // Requests (Leave, Izin, Overtime & Dynamic Approvals)
+  getApprovers: () => request('/api/requests/approvers'),
+
+  getMyRequests: () => request('/api/requests/my-requests'),
+
+  getLeaveBalance: () => request('/api/requests/leave-balance'),
+
+  getApprovals: () => request('/api/requests/approvals'),
+
   submitRequest: (data: {
-    type: 'cuti' | 'izin' | 'overtime';
+    type: 'cuti' | 'izin' | 'sakit' | 'overtime';
     start_date: string;
     end_date: string;
     reason: string;
+    approver_id?: string;
+    attachment_url?: string;
   }) =>
     request('/api/requests', {
       method: 'POST',
       body: JSON.stringify(data),
     }),
+
+  approveRequest: (id: string) =>
+    request(`/api/requests/${id}/approve`, {
+      method: 'PATCH',
+    }),
+
+  rejectRequest: (id: string, rejection_reason: string) =>
+    request(`/api/requests/${id}/reject`, {
+      method: 'PATCH',
+      body: JSON.stringify({ rejection_reason }),
+    }),
+
+  // Employees Directory & Status
+  getEmployeesDirectory: () => request('/api/employees'),
 };
